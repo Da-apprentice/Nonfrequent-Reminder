@@ -28,6 +28,14 @@ ENV_FILE_NAME = "guardian_secrets.env"
 APP_DIR = Path(__file__).resolve().parent
 ENV_PATH = APP_DIR / ENV_FILE_NAME
 
+
+def safe_log_exception(context: str, exc: BaseException) -> None:
+    """Log an exception without letting traceback printing crash the app."""
+    try:
+        print(f"[{context}] {type(exc).__name__}: {exc}")
+    except Exception:
+        pass
+
 CONFIG_KEYS = (
     "GEMINI_MODEL",
     "GEMINI_API_KEY",
@@ -336,8 +344,8 @@ PAYMENT_FREQUENCIES = ["monthly", "quarterly", "semester", "annual"]
 
 TEXTS: dict[str, dict[str, str]] = {
     "en": {
-        "product_title": "Important non-frequent issues reminder",
-        "app_name": "Example: insurance renewal guardian",
+        "product_title": "Important non-frequent obligations guardian",
+        "app_name": "Use case: Insurance renewal guardian",
         "app_version": "Version 2",
         "tagline": "Never lose your coverage",
         "language_label": "Language",
@@ -347,7 +355,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "step_3": "Set up reminders (AI suggests a schedule)",
         "step_4": "Upload payment proof to stop reminders",
         "upload_current": "Upload your policy",
-        "upload_current_help": "Upload the PDF for your current Gastos Médicos Mayores policy",
+        "upload_current_help": "Upload the PDF for your current healthcare policy",
         "upload_file_hint": "200MB per file • PDF",
         "analyze_btn": "Analyze my policy",
         "policy_mgmt_title": "Policy Management",
@@ -558,6 +566,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "save_btn": "Save",
         "save_policy_required": "Save the policy first before storing reminder settings.",
         "sim_date_btn": "Simulate",
+        "sim_clear_btn": "Clear simulation output",
         "sim_date_help": "Pick a date and click Simulate to preview risk for all policies and send reminders due that day.",
         "sim_date_active": "Simulating **{date}**",
         "sim_dispatch_title": "Simulation results",
@@ -567,6 +576,8 @@ TEXTS: dict[str, dict[str, str]] = {
         "sim_record_due": "**{holder}** — {count} reminder(s) sent ({channels})",
         "sim_record_not_due": "{holder} — no reminder on this date",
         "sim_record_inactive": "{holder} — reminders stopped (payment confirmed)",
+        "sim_record_renewed": "{holder} — policy renewed (skipped)",
+        "sim_record_error": "{holder} — simulation error ({error})",
         "sim_record_no_renewal": "{holder} — no payment date",
         "sim_dispatch_done": "Processed {records} policy/policies for {date}. Sent {count} alert(s).",
         "sim_due_now": "Due on simulated date",
@@ -576,15 +587,28 @@ TEXTS: dict[str, dict[str, str]] = {
         "duplicate_message": "This policy number already exists ({count} version(s) in history).",
         "duplicate_keep_both": "Keep both versions",
         "duplicate_want_replace": "Replace previous version",
+        "duplicate_discard": "Discard",
+        "duplicate_discarded": "Upload discarded — nothing was saved.",
         "duplicate_delete_manual": "To replace the previous version, delete it manually from History below, then upload and analyze this PDF again.",
         "duplicate_saved_both": "Saved as version #{version}.",
         "duplicate_not_saved": "This analysis is not saved yet — choose an option above.",
         "duplicate_id_label": "Policy ID detected",
+        "renewal_link_title": "Renewal check",
+        "renewal_link_message": "One or more existing policies are within the renewal alert window. Is this upload a renewal of one of them?",
+        "renewal_link_yes": "Yes — this is a renewal",
+        "renewal_link_no": "No — this is a new policy",
+        "renewal_link_select_label": "Select the policy being renewed",
+        "renewal_link_select_placeholder": "Choose a policy ID…",
+        "renewal_link_confirm_btn": "Confirm",
+        "renewal_link_confirm_sure": "Are you sure this upload renews the selected policy? The previous policy will be marked as renewed.",
+        "renewal_link_confirm_yes": "Yes, I'm sure",
+        "renewal_link_confirm_back": "Go back",
+        "renewal_link_saved": "Renewal linked and saved.",
+        "renewal_link_select_required": "Select a policy to renew.",
+        "renewal_due_label": "Renewal due",
+        "renewal_status_renewed": "Renewed — {policy_id} · {date}",
         "version_label": "Upload version",
         "payment_schedule_title": "Payment schedule",
-        "extension_allowance_label": "Extension allowance (days)",
-        "extension_allowance_help": "Payments after the due date within this many days still count as valid.",
-        "extension_allowance_saved": "Extension allowance saved.",
         "payment_item_summary": "Payment {n}/{total} — {date} · {status}",
         "payment_days_left": "{days} days until due",
         "payment_days_overdue": "{days} days overdue",
@@ -607,6 +631,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "payment_confirmed_badge": "PAID — confirmed {date}",
         "payment_confirmed_auto": "All details matched — marked as paid automatically.",
         "payment_confirmed_override": "Marked as paid (manually validated despite mismatches).",
+        "payment_confirmation_match": "Payment confirmation match",
         "payment_mismatch_title": "Some details on the receipt don't match this payment",
         "payment_field_amount": "Amount",
         "payment_field_insurance_id": "Policy number",
@@ -627,6 +652,9 @@ TEXTS: dict[str, dict[str, str]] = {
         "upload_error_detail_label": "Reason",
         "upload_missing_title": "Some required information was not found in the PDF",
         "upload_missing_hint": "Enter the missing details below, or upload a different file.",
+        "upload_validation_hint": "The AI could not confidently verify some extracted values. Please confirm or correct them below.",
+        "upload_validation_field_note": "Could not verify this value from the document — please confirm.",
+        "field_next_payment_date": "Next payment due date",
         "upload_manual_continue": "Continue with entered details",
         "upload_try_again": "Upload a different file",
         "field_plan_id": "Plan ID / policy number",
@@ -867,6 +895,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "save_btn": "Guardar",
         "save_policy_required": "Guarda la póliza primero antes de almacenar los recordatorios.",
         "sim_date_btn": "Simular",
+        "sim_clear_btn": "Limpiar resultado de simulación",
         "sim_date_help": "Elige una fecha y pulsa Simular para ver el riesgo de todas las pólizas y enviar recordatorios de ese día.",
         "sim_date_active": "Simulando **{date}**",
         "sim_dispatch_title": "Resultados de la simulación",
@@ -876,6 +905,8 @@ TEXTS: dict[str, dict[str, str]] = {
         "sim_record_due": "**{holder}** — {count} recordatorio(s) enviado(s) ({channels})",
         "sim_record_not_due": "{holder} — sin recordatorio en esta fecha",
         "sim_record_inactive": "{holder} — recordatorios detenidos (pago confirmado)",
+        "sim_record_renewed": "{holder} — póliza renovada (omitida)",
+        "sim_record_error": "{holder} — error de simulación ({error})",
         "sim_record_no_renewal": "{holder} — sin fecha de pago",
         "sim_dispatch_done": "Se procesaron {records} póliza(s) para {date}. Se enviaron {count} alerta(s).",
         "sim_due_now": "Vence en la fecha simulada",
@@ -885,15 +916,28 @@ TEXTS: dict[str, dict[str, str]] = {
         "duplicate_message": "Este número de póliza ya existe ({count} versión(es) en el historial).",
         "duplicate_keep_both": "Conservar ambas versiones",
         "duplicate_want_replace": "Reemplazar versión anterior",
+        "duplicate_discard": "Descartar",
+        "duplicate_discarded": "Carga descartada — no se guardó nada.",
         "duplicate_delete_manual": "Para reemplazar la versión anterior, elimínala manualmente en el Historial abajo y vuelve a subir y analizar este PDF.",
         "duplicate_saved_both": "Guardado como versión #{version}.",
         "duplicate_not_saved": "Este análisis aún no se guarda — elige una opción arriba.",
         "duplicate_id_label": "ID de póliza detectado",
+        "renewal_link_title": "Verificación de renovación",
+        "renewal_link_message": "Una o más pólizas existentes están dentro de la ventana de alerta de renovación. ¿Esta carga es la renovación de alguna de ellas?",
+        "renewal_link_yes": "Sí — es una renovación",
+        "renewal_link_no": "No — es una póliza nueva",
+        "renewal_link_select_label": "Selecciona la póliza que se renueva",
+        "renewal_link_select_placeholder": "Elige un ID de póliza…",
+        "renewal_link_confirm_btn": "Confirmar",
+        "renewal_link_confirm_sure": "¿Confirmas que esta carga renueva la póliza seleccionada? La póliza anterior se marcará como renovada.",
+        "renewal_link_confirm_yes": "Sí, estoy seguro",
+        "renewal_link_confirm_back": "Volver",
+        "renewal_link_saved": "Renovación vinculada y guardada.",
+        "renewal_link_select_required": "Selecciona una póliza para renovar.",
+        "renewal_due_label": "Vencimiento",
+        "renewal_status_renewed": "Renovada — {policy_id} · {date}",
         "version_label": "Versión de carga",
         "payment_schedule_title": "Calendario de pagos",
-        "extension_allowance_label": "Tolerancia de prórroga (días)",
-        "extension_allowance_help": "Los pagos después del vencimiento dentro de estos días aún se consideran válidos.",
-        "extension_allowance_saved": "Tolerancia de prórroga guardada.",
         "payment_item_summary": "Pago {n}/{total} — {date} · {status}",
         "payment_days_left": "{days} días para el vencimiento",
         "payment_days_overdue": "{days} días de atraso",
@@ -916,6 +960,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "payment_confirmed_badge": "PAGADO — confirmado {date}",
         "payment_confirmed_auto": "Todos los datos coinciden — marcado como pagado automáticamente.",
         "payment_confirmed_override": "Marcado como pagado (validado manualmente a pesar de las diferencias).",
+        "payment_confirmation_match": "Confirmación de pago coincidente",
         "payment_mismatch_title": "Algunos datos del comprobante no coinciden con este pago",
         "payment_field_amount": "Monto",
         "payment_field_insurance_id": "Número de póliza",
@@ -936,6 +981,9 @@ TEXTS: dict[str, dict[str, str]] = {
         "upload_error_detail_label": "Motivo",
         "upload_missing_title": "No se encontró información requerida en el PDF",
         "upload_missing_hint": "Ingresa los datos faltantes abajo, o sube otro archivo.",
+        "upload_validation_hint": "La IA no pudo verificar con confianza algunos valores extraídos. Confírmalos o corrígelos abajo.",
+        "upload_validation_field_note": "No se pudo verificar este valor en el documento — confírmalo por favor.",
+        "field_next_payment_date": "Próxima fecha de pago",
         "upload_manual_continue": "Continuar con los datos ingresados",
         "upload_try_again": "Subir otro archivo",
         "field_plan_id": "ID de póliza / número de plan",
@@ -1154,7 +1202,13 @@ def sync_reminder_fields_from_policy(
     """Load saved reminder settings for this policy into session state."""
     sync_key = f"{key_prefix}reminder_sync_token"
     token = reminder_sync_token(row, context)
-    if st.session_state.get(sync_key) == token:
+    schedule_keys = (
+        f"{key_prefix}sched_days",
+        f"{key_prefix}sched_time",
+        f"{key_prefix}sched_frequent_days",
+        f"{key_prefix}sched_daily_freq",
+    )
+    if st.session_state.get(sync_key) == token and all(key in st.session_state for key in schedule_keys):
         return
 
     email_cfg = get_channel_reminder_config("email", row, context, analysis)
@@ -1374,7 +1428,6 @@ def render_schedule_timing_inputs(
                 t("save_btn"),
                 key=f"{key_prefix}save_schedule",
                 width="stretch",
-                disabled=not _schedule_timing_is_dirty(key_prefix),
             ):
                 _clamp_frequent_days_state(key_prefix)
                 if analysis_id and context is not None:
@@ -1464,13 +1517,29 @@ def extract_policy_dates_from_text(text: str) -> dict[str, str | None]:
         r"[\s:.\-–—]*(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{4}[/.-]\d{1,2}[/.-]\d{1,2})",
     )
     start_date = end_date = None
+    range_match = re.search(
+        r"(?:vigencia|vigente|periodo\s+de\s+vigencia|policy\s+period|coverage\s+period|term\s+from)"
+        r"[\s:.\-–—]*"
+        r"(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{4}[/.-]\d{1,2}[/.-]\d{1,2})"
+        r"\s*(?:al|a|to|until|-)\s*"
+        r"(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{4}[/.-]\d{1,2}[/.-]\d{1,2})",
+        text,
+        re.IGNORECASE,
+    )
+    if range_match:
+        start_date = _normalize_extracted_date(range_match.group(1))
+        end_date = _normalize_extracted_date(range_match.group(2))
     for pattern in start_patterns:
+        if start_date:
+            break
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
             start_date = _normalize_extracted_date(match.group(1))
             if start_date:
                 break
     for pattern in end_patterns:
+        if end_date:
+            break
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
             end_date = _normalize_extracted_date(match.group(1))
@@ -1551,6 +1620,7 @@ def render_header_today_and_simulation(config: dict[str, str]) -> None:
 
     render_header_date_display()
 
+    ref = get_reference_date()
     st.markdown('<div class="header-sim-row-marker"></div>', unsafe_allow_html=True)
     date_col, btn_col = st.columns([1.2, 1], gap="small")
     with date_col:
@@ -1570,8 +1640,16 @@ def render_header_today_and_simulation(config: dict[str, str]) -> None:
             st.session_state.reference_date = picked
             st.session_state.simulation_results = run_simulation_for_all_records(picked, config)
             st.rerun()
+        has_simulation_output = st.session_state.get("simulation_results") is not None
+        if st.button(
+            t("sim_clear_btn"),
+            width="stretch",
+            key="clear_simulation_btn",
+            disabled=not has_simulation_output,
+        ):
+            clear_simulation_output()
+            st.rerun()
 
-    ref = get_reference_date()
     if ref != real_today:
         st.markdown(
             f'<div class="sim-active-banner sim-active-banner-right">{t("sim_date_active").format(date=format_display_date(ref))}</div>',
@@ -1579,10 +1657,15 @@ def render_header_today_and_simulation(config: dict[str, str]) -> None:
         )
 
 
+def clear_simulation_output() -> None:
+    st.session_state.pop("simulation_results", None)
+
+
 def render_simulation_results_section() -> None:
     results = st.session_state.get("simulation_results")
-    if results is not None:
-        render_simulation_results(results, get_reference_date())
+    if results is None:
+        return
+    render_simulation_results(results, get_reference_date())
 
 
 def render_sidebar_global_contacts() -> None:
@@ -1926,10 +2009,15 @@ CUSTOM_CSS = """
         justify-content: center !important;
         text-decoration: none !important;
     }
-    div[data-testid="stElementContainer"]:has(.whatsapp-demo-link-marker) a[data-testid="stLinkButton"],
-    div[data-testid="stElementContainer"]:has(.whatsapp-demo-link-marker) a[data-testid="stLinkButton"] * {
+    div[data-testid="stElementContainer"]:has(.whatsapp-demo-link-marker) + div[data-testid="stElementContainer"] a[data-testid="stLinkButton"],
+    div[data-testid="stElementContainer"]:has(.whatsapp-demo-link-marker) a[data-testid="stLinkButton"] {
         background: #BF5700 !important;
         border: 2px solid #A84D00 !important;
+        color: #FFFFFF !important;
+        font-weight: 700 !important;
+    }
+    div[data-testid="stElementContainer"]:has(.whatsapp-demo-link-marker) + div[data-testid="stElementContainer"] a[data-testid="stLinkButton"] *,
+    div[data-testid="stElementContainer"]:has(.whatsapp-demo-link-marker) a[data-testid="stLinkButton"] * {
         color: #FFFFFF !important;
         font-weight: 700 !important;
     }
@@ -1997,11 +2085,36 @@ CUSTOM_CSS = """
     .history-chip-green { background: #ECFDF5; border-color: #10B981; color: #065F46; }
     .history-chip-yellow { background: #FFFBEB; border-color: #F59E0B; color: #92400E; }
     .history-chip-red { background: #FEF2F2; border-color: #EF4444; color: #991B1B; }
+    .history-chip-orange { background: #FFF4E6; border-color: #BF5700; color: #BF5700; }
+    .renewal-link-panel {
+        background: #FFFBEB;
+        border: 2px solid #F59E0B;
+        border-radius: 12px;
+        padding: 1rem 1.1rem;
+        margin: 0.75rem 0 1rem 0;
+    }
+    .renewal-link-panel-title { color: #92400E; font-size: 1.05rem; font-weight: 700; margin-bottom: 0.35rem; }
+    .renewal-link-panel-body { color: #78350F; font-size: 0.95rem; line-height: 1.5; margin-bottom: 0.5rem; }
     .history-row-marker { display: none; }
     [data-testid="stVerticalBlock"]:has(.history-row-marker) [data-testid="stExpander"] summary {
         padding: 0.45rem 0.75rem !important;
         min-height: unset !important;
         font-size: 0.92rem !important;
+    }
+    .history-delete-marker { display: none; }
+    div[data-testid="stHorizontalBlock"]:has(.history-delete-marker) {
+        align-items: center !important;
+        gap: 0.35rem !important;
+    }
+    div[data-testid="stColumn"]:has(.history-delete-marker) {
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: 2.25rem !important;
+    }
+    div[data-testid="stColumn"]:has(.history-delete-marker) button {
+        min-height: 2.25rem !important;
+        width: 2.25rem !important;
+        padding: 0.2rem !important;
     }
     .payment-schedule-marker { display: none; }
     .payment-marker { display: none; }
@@ -2054,6 +2167,16 @@ CUSTOM_CSS = """
     .payment-match-row { padding: 0.3rem 0; font-size: 0.93rem; }
     .payment-match-ok { color: #166534; }
     .payment-match-fail { color: #991B1B; font-weight: 600; }
+    .payment-match-banner {
+        background: #ECFDF5;
+        color: #065F46;
+        border: 1px solid #6EE7B7;
+        border-radius: 8px;
+        padding: 0.65rem 0.85rem;
+        font-size: 0.92rem;
+        font-weight: 600;
+        line-height: 1.4;
+    }
     .payment-extracted-summary {
         background: #F8FAFC;
         border: 1px solid #E2E8F0;
@@ -2277,7 +2400,14 @@ def render_version_badge(version: int, insurance_id: str = "") -> None:
     st.markdown(f'<div class="version-badge-sub">{sub}</div>', unsafe_allow_html=True)
 
 
-def persist_analysis_to_db(analysis: dict[str, Any], context: dict[str, Any], upload_version: int) -> int:
+def persist_analysis_to_db(
+    analysis: dict[str, Any],
+    context: dict[str, Any],
+    upload_version: int,
+    *,
+    renews_analysis_id: int | None = None,
+) -> int:
+    analysis = sanitize_analysis_for_storage(analysis)
     insurance_id = get_insurance_id(analysis)
     freq = normalize_payment_frequency(analysis.get("payment_frequency"))
     email_settings = {
@@ -2311,6 +2441,7 @@ def persist_analysis_to_db(analysis: dict[str, Any], context: dict[str, Any], up
         insurance_id=insurance_id,
         upload_version=upload_version,
         reminder_settings_json=json.dumps(reminder_blob),
+        renews_analysis_id=renews_analysis_id,
     )
     st.session_state.saved_analysis_id = row_id
     context["analysis_id"] = row_id
@@ -2319,6 +2450,105 @@ def persist_analysis_to_db(analysis: dict[str, Any], context: dict[str, Any], up
     st.session_state.analysis_context = context
     st.session_state.analysis_db_saved = True
     return row_id
+
+
+def render_renewal_link_panel() -> None:
+    if not st.session_state.get("renewal_link_pending"):
+        return
+
+    candidates = get_policies_in_renewal_alert_range()
+    if not candidates:
+        st.session_state.renewal_link_pending = False
+        return
+
+    candidate_map = {int(row["id"]): row for row in candidates}
+    st.markdown(
+        f'<div class="renewal-link-panel">'
+        f'<div class="renewal-link-panel-title">{t("renewal_link_title")}</div>'
+        f'<div class="renewal-link-panel-body">{t("renewal_link_message")}</div>'
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+    if st.session_state.get("renewal_link_confirm_step"):
+        selected_id = st.session_state.get("renewal_link_confirmed_target_id")
+        selected_row = candidate_map.get(int(selected_id)) if selected_id is not None else None
+        selected_label = format_renewal_candidate_label(selected_row) if selected_row else t("not_found")
+        st.warning(t("renewal_link_confirm_sure"))
+        st.markdown(f"**{selected_label}**")
+        confirm_col, back_col = st.columns([1, 1])
+        with confirm_col:
+            if st.button(t("renewal_link_confirm_yes"), type="primary", key="renewal_link_confirm_yes", width="stretch"):
+                if selected_id is None:
+                    st.error(t("renewal_link_select_required"))
+                    st.session_state.renewal_link_confirm_step = False
+                    st.rerun()
+                else:
+                    analysis = st.session_state.get("last_analysis") or {}
+                    renewal = analysis.get("renewal_date") or ""
+                    risk_level, risk_msg_key = compute_risk_level(
+                        renewal if renewal and renewal != "null" else None,
+                        get_reference_date(),
+                    )
+                    if finalize_new_analysis(
+                        analysis,
+                        risk_level,
+                        risk_msg_key,
+                        renews_analysis_id=int(selected_id),
+                    ):
+                        st.success(t("renewal_link_saved"))
+                        st.rerun()
+        with back_col:
+            if st.button(t("renewal_link_confirm_back"), key="renewal_link_confirm_back", width="stretch"):
+                st.session_state.renewal_link_confirm_step = False
+                st.session_state.pop("renewal_link_confirmed_target_id", None)
+                st.rerun()
+        return
+
+    choice_col, confirm_col = st.columns([4, 1], gap="medium", vertical_alignment="bottom")
+    with choice_col:
+        is_renewal = st.radio(
+            t("renewal_link_title"),
+            options=[True, False],
+            format_func=lambda value: t("renewal_link_yes") if value else t("renewal_link_no"),
+            key="renewal_link_is_renewal",
+            horizontal=True,
+            label_visibility="collapsed",
+        )
+        if is_renewal:
+            option_ids = list(candidate_map.keys())
+            st.selectbox(
+                t("renewal_link_select_label"),
+                options=option_ids,
+                format_func=lambda row_id: format_renewal_candidate_label(candidate_map[row_id]),
+                key="renewal_link_selected_id",
+                index=None,
+                placeholder=t("renewal_link_select_placeholder"),
+            )
+
+    with confirm_col:
+        st.markdown('<div class="save-btn-blue-marker"></div>', unsafe_allow_html=True)
+        if st.button(t("renewal_link_confirm_btn"), key="renewal_link_confirm_btn", width="stretch"):
+            is_renewal_choice = st.session_state.get("renewal_link_is_renewal", False)
+            if is_renewal_choice:
+                selected_id = st.session_state.get("renewal_link_selected_id")
+                if selected_id is None:
+                    st.error(t("renewal_link_select_required"))
+                else:
+                    st.session_state.renewal_link_confirmed_target_id = int(selected_id)
+                    st.session_state.renewal_link_confirm_step = True
+                    st.rerun()
+            else:
+                analysis = st.session_state.get("last_analysis") or {}
+                context = st.session_state.get("analysis_context") or {}
+                renewal = analysis.get("renewal_date") or ""
+                risk_level, risk_msg_key = compute_risk_level(
+                    renewal if renewal and renewal != "null" else None,
+                    get_reference_date(),
+                )
+                if finalize_new_analysis(analysis, risk_level, risk_msg_key):
+                    st.success(t("analysis_saved"))
+                st.rerun()
 
 
 def render_duplicate_alert_panel() -> None:
@@ -2341,7 +2571,7 @@ def render_duplicate_alert_panel() -> None:
         unsafe_allow_html=True,
     )
     render_version_badge(pending_version, insurance_id)
-    col_keep, col_replace = st.columns(2)
+    col_keep, col_replace, col_discard = st.columns(3)
     with col_keep:
         if st.button(t("duplicate_keep_both"), type="primary", key="dup_keep_both"):
             persist_analysis_to_db(analysis, context, pending_version)
@@ -2353,6 +2583,12 @@ def render_duplicate_alert_panel() -> None:
         if st.button(t("duplicate_want_replace"), key="dup_want_replace"):
             clear_current_analysis()
             st.session_state.replace_manual_flash = True
+            st.rerun()
+    with col_discard:
+        if st.button(t("duplicate_discard"), key="dup_discard"):
+            clear_current_analysis()
+            st.session_state.upload_widget_key = st.session_state.get("upload_widget_key", 0) + 1
+            st.session_state.duplicate_discard_flash = True
             st.rerun()
     st.info(t("duplicate_not_saved"))
     st.markdown("---")
@@ -2585,6 +2821,10 @@ def init_db() -> None:
         "insurance_id": "ALTER TABLE analyses ADD COLUMN insurance_id TEXT",
         "upload_version": "ALTER TABLE analyses ADD COLUMN upload_version INTEGER DEFAULT 1",
         "payment_confirmations_json": "ALTER TABLE analyses ADD COLUMN payment_confirmations_json TEXT",
+        "is_renewed": "ALTER TABLE analyses ADD COLUMN is_renewed INTEGER DEFAULT 0",
+        "renewed_at": "ALTER TABLE analyses ADD COLUMN renewed_at TEXT",
+        "renewed_to_analysis_id": "ALTER TABLE analyses ADD COLUMN renewed_to_analysis_id INTEGER",
+        "renews_analysis_id": "ALTER TABLE analyses ADD COLUMN renews_analysis_id INTEGER",
     }
     for col, sql in migrations.items():
         if col not in existing:
@@ -2879,6 +3119,121 @@ def next_upload_version(analysis: dict[str, Any]) -> int:
     return max(versions) + 1
 
 
+def get_policies_in_renewal_alert_range(reference: date | None = None) -> list[dict[str, Any]]:
+    """Return saved policies whose term end falls within the renewal alert window."""
+    ref = reference or get_reference_date()
+    candidates: list[dict[str, Any]] = []
+    for row in get_history():
+        if int(row.get("is_renewed") or 0):
+            continue
+        analysis, _context = parse_stored_analysis(row)
+        renewal_due = get_policy_renewal_due_value(analysis)
+        if not renewal_due:
+            continue
+        risk_level, _ = compute_risk_level(renewal_due, ref)
+        if risk_level in {"warning", "critical"}:
+            candidates.append(row)
+    return candidates
+
+
+def format_renewal_candidate_label(row: dict[str, Any]) -> str:
+    policy_id = get_policy_number_display(row) or insurance_id_from_row(row) or t("not_found")
+    analysis, _context = parse_stored_analysis(row)
+    renewal_due = get_policy_renewal_due_value(analysis)
+    due_display = format_policy_date(renewal_due) if renewal_due else t("not_found")
+    return f"{policy_id} — {t('renewal_due_label')}: {due_display}"
+
+
+def get_renewed_status_display(row: dict[str, Any]) -> tuple[str, str]:
+    policy_id = get_policy_number_display(row) or insurance_id_from_row(row) or t("not_found")
+    renewed_at = (row.get("renewed_at") or "")[:10]
+    date_display = format_policy_date(renewed_at) if renewed_at else t("not_found")
+    return "orange", t("renewal_status_renewed").format(policy_id=policy_id, date=date_display)
+
+
+def mark_policy_as_renewed(old_analysis_id: int, new_analysis_id: int) -> None:
+    update_analysis_record(
+        old_analysis_id,
+        is_renewed=1,
+        renewed_at=datetime.now().isoformat(),
+        renewed_to_analysis_id=new_analysis_id,
+        reminders_active=0,
+    )
+
+
+def clear_renewal_link_state() -> None:
+    for key in (
+        "renewal_link_pending",
+        "renewal_link_confirm_step",
+        "renewal_link_is_renewal",
+        "renewal_link_selected_id",
+        "renewal_link_confirmed_target_id",
+    ):
+        st.session_state.pop(key, None)
+
+
+def finalize_new_analysis(
+    analysis: dict[str, Any],
+    risk_level: str,
+    risk_msg_key: str,
+    *,
+    renews_analysis_id: int | None = None,
+    skip_duplicate_check: bool = False,
+) -> bool:
+    """Save a newly analyzed policy, optionally linking it as a renewal."""
+    store_analysis_session(analysis, risk_level, risk_msg_key)
+    context = st.session_state.analysis_context
+    existing = find_existing_uploads(analysis)
+
+    if renews_analysis_id is not None:
+        clear_renewal_link_state()
+        st.session_state.duplicate_pending = False
+        st.session_state.pop("duplicate_existing_count", None)
+        new_id = persist_analysis_to_db(
+            analysis,
+            context,
+            1,
+            renews_analysis_id=renews_analysis_id,
+        )
+        mark_policy_as_renewed(renews_analysis_id, new_id)
+        st.session_state.saved_analysis_id = new_id
+        context["analysis_id"] = new_id
+        context["renews_analysis_id"] = renews_analysis_id
+        st.session_state.analysis_context = context
+        st.session_state.analysis_db_saved = True
+        return True
+
+    if existing and not skip_duplicate_check:
+        st.session_state.duplicate_pending = True
+        st.session_state.duplicate_existing_count = len(existing)
+        st.session_state.analysis_db_saved = False
+        context["insurance_id"] = get_insurance_id(analysis)
+        context["pending_upload_version"] = next_upload_version(analysis)
+        st.session_state.analysis_context = context
+        clear_renewal_link_state()
+        return False
+
+    st.session_state.duplicate_pending = False
+    st.session_state.pop("duplicate_existing_count", None)
+    persist_analysis_to_db(analysis, context, 1)
+    clear_renewal_link_state()
+    return True
+
+
+def begin_analysis_after_upload(analysis: dict[str, Any], risk_level: str, risk_msg_key: str) -> bool:
+    """Route a fresh analysis through renewal check or straight to save."""
+    candidates = get_policies_in_renewal_alert_range()
+    if candidates:
+        store_analysis_session(analysis, risk_level, risk_msg_key)
+        st.session_state.renewal_link_pending = True
+        st.session_state.renewal_link_confirm_step = False
+        st.session_state.analysis_db_saved = False
+        st.session_state.duplicate_pending = False
+        st.session_state.pop("duplicate_existing_count", None)
+        return False
+    return finalize_new_analysis(analysis, risk_level, risk_msg_key)
+
+
 def backfill_insurance_ids() -> None:
     conn = sqlite3.connect(DB_PATH)
     rows = conn.execute(
@@ -2913,6 +3268,7 @@ def save_to_database(
     insurance_id: str = "",
     upload_version: int = 1,
     reminder_settings_json: str = "{}",
+    renews_analysis_id: int | None = None,
 ) -> int:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.execute(
@@ -2921,8 +3277,9 @@ def save_to_database(
             (policy_holder, insurer, renewal_date, premium, analyzed_at,
              email_primary, email_secondary, language, analysis_json, context_json,
              payment_frequency, reminder_start_days, reminder_base_time,
-             reminders_active, reminder_settings_json, insurance_id, upload_version)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+             reminders_active, reminder_settings_json, insurance_id, upload_version,
+             renews_analysis_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
         """,
         (
             policy_holder, insurer, renewal_date, premium,
@@ -2933,6 +3290,7 @@ def save_to_database(
             reminder_settings_json,
             insurance_id or None,
             upload_version,
+            renews_analysis_id,
         ),
     )
     row_id = int(cursor.lastrowid)
@@ -3025,6 +3383,12 @@ REQUIRED_ANALYSIS_FIELDS: dict[str, str] = {
 
 
 DATE_ANALYSIS_FIELDS = frozenset({"policy_start_date", "policy_end_date"})
+MANUAL_REVIEW_DATE_FIELDS = frozenset({"policy_start_date", "policy_end_date"})
+MANUAL_REVIEW_FIELD_LABELS: dict[str, str] = {
+    **REQUIRED_ANALYSIS_FIELDS,
+}
+MANUAL_REVIEW_FIELD_KEYS = frozenset(MANUAL_REVIEW_FIELD_LABELS)
+AI_VALIDATION_FIELD_KEYS = frozenset(MANUAL_REVIEW_FIELD_KEYS)
 
 
 def analysis_field_present(value: str | None) -> bool:
@@ -3059,10 +3423,198 @@ def get_missing_required_fields(analysis: dict[str, Any]) -> list[str]:
     return missing
 
 
+def generate_payment_dates_for_term(
+    policy_start: date,
+    freq: str,
+    policy_end: date | None = None,
+) -> list[date]:
+    """All scheduled payment dates from policy start through term end."""
+    interval = months_between_payments(freq)
+    dates: list[date] = []
+    current = policy_start
+    while True:
+        if policy_end and current >= policy_end:
+            break
+        dates.append(current)
+        current = add_months(current, interval)
+        if not policy_end and len(dates) >= max(12, payments_per_year(freq) * 5):
+            break
+    return dates
+
+
+def infer_renewal_date_from_term(
+    analysis: dict[str, Any],
+    reference: date | None = None,
+    *,
+    force: bool = False,
+) -> dict[str, Any]:
+    """Calculate next payment due from start date + frequency when not on the document."""
+    enriched = dict(analysis)
+    if (
+        not force
+        and analysis_date_present(enriched.get("renewal_date"))
+        and not enriched.get("_renewal_date_computed")
+    ):
+        return enriched
+
+    start = parse_policy_date(enriched.get("policy_start_date"))
+    end = parse_policy_date(enriched.get("policy_end_date"))
+    freq = normalize_payment_frequency(enriched.get("payment_frequency"))
+    if not start or freq not in PAYMENT_FREQUENCIES:
+        return enriched
+
+    ref = reference or get_reference_date()
+    payment_dates = generate_payment_dates_for_term(start, freq, end)
+    if not payment_dates:
+        return enriched
+
+    next_due = next((due for due in payment_dates if due >= ref), payment_dates[-1])
+    enriched["renewal_date"] = next_due.isoformat()
+    enriched["_renewal_date_computed"] = True
+    return enriched
+
+
+def get_unverified_analysis_fields(analysis: dict[str, Any], source_text: str = "") -> list[str]:
+    """Flag extracted fields that fail consistency checks against the document text."""
+    unverified: list[str] = []
+    start = parse_policy_date(analysis.get("policy_start_date"))
+    end = parse_policy_date(analysis.get("policy_end_date"))
+    renewal = parse_policy_date(analysis.get("renewal_date"))
+
+    if start and end and end <= start:
+        unverified.extend(["policy_start_date", "policy_end_date"])
+
+    if (
+        start
+        and end
+        and renewal
+        and not analysis.get("_renewal_date_computed")
+        and (renewal < start or renewal > end)
+    ):
+        unverified.append("renewal_date")
+
+    if source_text:
+        local_dates = extract_policy_dates_from_text(source_text)
+        for field in ("policy_start_date", "policy_end_date"):
+            ai_date = parse_policy_date(analysis.get(field))
+            local_date = parse_policy_date(local_dates.get(field))
+            if local_date and ai_date and local_date != ai_date and field not in unverified:
+                unverified.append(field)
+
+    return [field for field in unverified if field in MANUAL_REVIEW_FIELD_KEYS]
+
+
+def build_analysis_validation_prompt(analysis: dict[str, Any], current_text: str, language: str) -> str:
+    lang_instruction = (
+        "Respond entirely in English." if language == "en"
+        else "Responde completamente en español."
+    )
+    review_payload = {
+        key: analysis.get(key)
+        for key in (
+            "policy_holder", "insurer", "policy_number", "insurance_type",
+            "policy_start_date", "policy_end_date",
+            "premium_amount", "payment_frequency",
+        )
+    }
+    computed_note = ""
+    if analysis.get("_renewal_date_computed"):
+        computed_note = (
+            f"\nNote: next payment due date was calculated by the app as {analysis.get('renewal_date')} "
+            f"from start date + payment frequency. Do NOT ask to review renewal_date.\n"
+        )
+    return f"""
+You are validating extracted insurance policy data against the source document text.
+Flag ONLY values that are incomplete, clearly wrong, or not supported by the document.
+
+Extracted data to verify:
+{json.dumps(review_payload, ensure_ascii=False, indent=2)}
+{computed_note}
+Return ONLY valid JSON:
+{{
+  "fields_needing_review": ["field_key", ...],
+  "notes": {{"field_key": "brief reason in plain language"}}
+}}
+
+Fields you may return in fields_needing_review:
+policy_start_date, policy_end_date, policy_number, premium_amount, payment_frequency, insurer, insurance_type
+
+Rules:
+- {lang_instruction}
+- ONLY flag incomplete or wrong information — not fields that are absent but derivable elsewhere.
+- Do NOT flag renewal_date or next payment date — the app calculates it from start date + payment frequency.
+- CRITICAL: policy_end_date is the FULL policy/plan term END date (expiration), NOT the next payment due date.
+- Flag policy_end_date if missing from extraction but visible in the document, clearly wrong, before start date, or looks like a payment date instead of term end.
+- Flag policy_start_date if missing but visible, or inconsistent with policy_end_date.
+- Flag premium_amount if missing, "not found", or not clearly supported by the document.
+- Flag payment_frequency only if missing or clearly wrong — not if quarterly/monthly/etc. can be inferred from the document.
+- Do NOT flag a field simply because it was calculated rather than read verbatim.
+- Return an empty fields_needing_review array when the listed fields are complete and correct.
+- Return ONLY JSON, no markdown fences.
+
+POLICY TEXT:
+{current_text[:15000]}
+"""
+
+
+def validate_analysis_with_ai(
+    analysis: dict[str, Any],
+    current_text: str,
+    language: str,
+    model: Any,
+) -> tuple[list[str], dict[str, str]]:
+    if not current_text.strip():
+        return [], {}
+    try:
+        response = model.generate_content(build_analysis_validation_prompt(analysis, current_text, language))
+        if not response.candidates:
+            return [], {}
+        raw = response.text
+        if not raw or not raw.strip():
+            return [], {}
+        result = parse_gemini_json(raw.strip())
+        flagged = [
+            field for field in (result.get("fields_needing_review") or [])
+            if field in AI_VALIDATION_FIELD_KEYS
+        ]
+        notes_raw = result.get("notes") if isinstance(result.get("notes"), dict) else {}
+        notes = {
+            str(field): str(reason)
+            for field, reason in notes_raw.items()
+            if field in flagged and reason
+        }
+        return flagged, notes
+    except Exception as exc:
+        safe_log_exception("validate_analysis_with_ai", exc)
+        return [], {}
+
+
+def get_fields_needing_manual_input(analysis: dict[str, Any], source_text: str = "") -> list[str]:
+    missing = get_missing_required_fields(analysis)
+    unverified = get_unverified_analysis_fields(analysis, source_text)
+    ai_flagged = [
+        field for field in (analysis.get("_fields_needing_review") or [])
+        if field in MANUAL_REVIEW_FIELD_KEYS
+    ]
+    combined: list[str] = []
+    for field in missing + unverified + ai_flagged:
+        if field not in combined:
+            combined.append(field)
+    return combined
+
+
+def sanitize_analysis_for_storage(analysis: dict[str, Any]) -> dict[str, Any]:
+    cleaned = dict(analysis)
+    cleaned.pop("_fields_needing_review", None)
+    cleaned.pop("_validation_notes", None)
+    cleaned.pop("_renewal_date_computed", None)
+    return cleaned
+
+
 def merge_manual_analysis_fields(analysis: dict[str, Any], values: dict[str, Any]) -> dict[str, Any]:
     merged = dict(analysis)
     for key, value in values.items():
-        if key in DATE_ANALYSIS_FIELDS:
+        if key in MANUAL_REVIEW_DATE_FIELDS:
             if isinstance(value, date):
                 merged[key] = value.isoformat()
             elif value is not None and str(value).strip():
@@ -3083,12 +3635,19 @@ def reset_upload_state() -> None:
         "upload_parse_error",
         "pending_analysis",
         "pending_missing_fields",
+        "pending_source_text",
+        "pending_validation_notes",
         "last_analysis",
         "analysis_context",
         "saved_analysis_id",
         "analysis_db_saved",
         "duplicate_pending",
         "duplicate_existing_count",
+        "renewal_link_pending",
+        "renewal_link_confirm_step",
+        "renewal_link_is_renewal",
+        "renewal_link_selected_id",
+        "renewal_link_confirmed_target_id",
     ):
         st.session_state.pop(key, None)
 
@@ -3110,20 +3669,27 @@ def upload_parse_error_dialog() -> None:
 def render_missing_fields_form() -> None:
     analysis = st.session_state.get("pending_analysis") or {}
     missing_keys: list[str] = st.session_state.get("pending_missing_fields") or []
+    validation_notes: dict[str, str] = st.session_state.get("pending_validation_notes") or {}
     if not missing_keys:
         return
 
     st.warning(t("upload_missing_title"))
-    st.caption(t("upload_missing_hint"))
+    if validation_notes:
+        st.caption(t("upload_validation_hint"))
+    else:
+        st.caption(t("upload_missing_hint"))
     for field_key in missing_keys:
-        label_key = REQUIRED_ANALYSIS_FIELDS[field_key]
+        label_key = MANUAL_REVIEW_FIELD_LABELS.get(field_key, REQUIRED_ANALYSIS_FIELDS.get(field_key, field_key))
         st.markdown(t("upload_missing_field_item").format(field=t(label_key)))
+        note = validation_notes.get(field_key)
+        if note:
+            st.caption(f"{t('upload_validation_field_note')} {note}")
 
     with st.form("manual_missing_fields"):
         inputs: dict[str, Any] = {}
         for field_key in missing_keys:
-            label_key = REQUIRED_ANALYSIS_FIELDS[field_key]
-            if field_key in DATE_ANALYSIS_FIELDS:
+            label_key = MANUAL_REVIEW_FIELD_LABELS.get(field_key, REQUIRED_ANALYSIS_FIELDS.get(field_key, field_key))
+            if field_key in MANUAL_REVIEW_DATE_FIELDS:
                 existing = parse_policy_date(analysis.get(field_key))
                 inputs[field_key] = st.date_input(t(label_key), value=existing or date.today())
             else:
@@ -3138,12 +3704,22 @@ def render_missing_fields_form() -> None:
     if retry_btn:
         st.session_state.pop("pending_analysis", None)
         st.session_state.pop("pending_missing_fields", None)
+        st.session_state.pop("pending_source_text", None)
+        st.session_state.pop("pending_validation_notes", None)
         reset_upload_state()
         st.rerun()
 
     if continue_btn:
         merged = merge_manual_analysis_fields(analysis, inputs)
-        still_missing = get_missing_required_fields(merged)
+        merged.pop("_fields_needing_review", None)
+        merged.pop("_validation_notes", None)
+        merged = infer_renewal_date_from_term(
+            merged,
+            get_reference_date(),
+            force=bool(set(inputs) & {"policy_start_date", "policy_end_date", "payment_frequency"}),
+        )
+        source_text = st.session_state.get("pending_source_text", "")
+        still_missing = get_fields_needing_manual_input(merged, source_text)
         if still_missing:
             st.session_state.pending_analysis = merged
             st.session_state.pending_missing_fields = still_missing
@@ -3152,12 +3728,15 @@ def render_missing_fields_form() -> None:
             return
         st.session_state.pop("pending_analysis", None)
         st.session_state.pop("pending_missing_fields", None)
+        st.session_state.pop("pending_source_text", None)
+        st.session_state.pop("pending_validation_notes", None)
+        merged = sanitize_analysis_for_storage(merged)
         renewal_date = merged.get("renewal_date") or ""
         risk_level, risk_msg_key = compute_risk_level(
             renewal_date if renewal_date != "null" else None,
             get_reference_date(),
         )
-        saved = process_new_analysis(merged, risk_level, risk_msg_key)
+        saved = begin_analysis_after_upload(merged, risk_level, risk_msg_key)
         if saved:
             st.success(t("analysis_saved"))
         st.rerun()
@@ -3180,7 +3759,7 @@ Return ONLY valid JSON:
   "insurance_type": "type of insurance product (e.g. Gastos Médicos Mayores, GMM, life, auto)",
   "policy_start_date": "YYYY-MM-DD full policy term start date, or null",
   "policy_end_date": "YYYY-MM-DD full policy term end date, or null",
-  "renewal_date": "YYYY-MM-DD next payment due date or null",
+  "renewal_date": "YYYY-MM-DD next payment due date if explicitly shown, otherwise null",
   "premium_amount": "total renewal premium amount with currency",
   "payment_frequency": "monthly|quarterly|semester|annual",
   "coverage_details": "key coverage bullet points",
@@ -3201,6 +3780,8 @@ Rules:
   * English: "effective date", "expiration date", "policy period", "term from", "term to",
     "valid from", "valid until", "coverage period", "start date", "end date", "beginning", "commencement"
   Dates may appear as DD/MM/YYYY, MM/DD/YYYY, or written out. Always normalize to YYYY-MM-DD in JSON.
+  Do NOT use the next payment due date as policy_end_date. If unsure, return null for that field.
+- renewal_date: only extract if explicitly labeled as next payment / próximo pago / fecha de pago. Otherwise return null — the app will calculate it from policy_start_date + payment_frequency.
 - Detect payment_frequency from policy (mensual/trimestral/semestral/anual).
 - Suggest reminder_start_days based on payment type:
   * annual: 30-45 days before
@@ -3278,11 +3859,17 @@ def analyze_with_gemini(
         analysis = parse_gemini_json(raw.strip())
         analysis = enrich_policy_term_dates(analysis, current_text, language, model)
         analysis = normalize_analysis_date_fields(analysis)
+        analysis = infer_renewal_date_from_term(analysis, get_reference_date())
+        ai_flagged, validation_notes = validate_analysis_with_ai(analysis, current_text, language, model)
+        if ai_flagged:
+            analysis["_fields_needing_review"] = ai_flagged
+        if validation_notes:
+            analysis["_validation_notes"] = validation_notes
         return analysis, None, None
     except Exception as exc:
         debug = f"{type(exc).__name__}: {exc}"
         print(f"[analyze_with_gemini] {debug}")
-        traceback.print_exc()
+        safe_log_exception("analyze_with_gemini", exc)
         return None, "err_api_failure", debug
 
 
@@ -3370,14 +3957,34 @@ def analyze_payment_proof(file: Any, language: str) -> tuple[dict[str, Any] | No
     return analyze_payment_proof_image(file, language)
 
 
+def parse_amount_value(value: Any) -> float | None:
+    """Parse a currency amount from a number or string for numeric comparison."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return round(float(value), 2)
+    text = str(value).strip()
+    if not text or text.lower() in {"null", "none", ""}:
+        return None
+    parsed = extract_first_amount(text)
+    if parsed is None:
+        digits = re.sub(r"[^0-9.]", "", text)
+        if not digits:
+            return None
+        try:
+            parsed = float(digits)
+        except ValueError:
+            return None
+    return round(parsed, 2)
+
+
 def normalize_amount_value(value: str) -> str:
-    digits = re.sub(r"[^0-9.]", "", value or "")
-    if not digits:
+    parsed = parse_amount_value(value)
+    if parsed is None:
         return ""
-    try:
-        return f"{float(digits):.2f}"
-    except ValueError:
-        return digits
+    return f"{parsed:.2f}"
 
 
 def normalize_company_name(value: str) -> str:
@@ -3385,7 +3992,7 @@ def normalize_company_name(value: str) -> str:
 
 
 def payment_proof_amount_present(value: Any) -> bool:
-    return bool(normalize_amount_value(str(value or "")))
+    return parse_amount_value(value) is not None
 
 
 def payment_proof_date_present(value: Any) -> bool:
@@ -3499,9 +4106,9 @@ def match_payment_proof(
     expected_company: str,
     extension_days: int = 0,
 ) -> dict[str, Any]:
-    ext_amount = normalize_amount_value(str(extracted.get("amount") or ""))
-    exp_amount = normalize_amount_value(expected_amount)
-    amount_match = bool(ext_amount) and bool(exp_amount) and ext_amount == exp_amount
+    ext_amount = parse_amount_value(extracted.get("amount"))
+    exp_amount = parse_amount_value(expected_amount)
+    amount_match = ext_amount is not None and exp_amount is not None and ext_amount == exp_amount
 
     date_match = False
     ext_date = parse_policy_date(str(extracted.get("payment_date") or ""))
@@ -3515,35 +4122,66 @@ def match_payment_proof(
     return {"matches": matches, "all_match": amount_match and date_match}
 
 
-def render_extension_allowance_controls(
-    key_prefix: str,
-    context: dict[str, Any],
-    analysis_id: int | None,
-) -> None:
-    ext_key = f"{key_prefix}extension_allowance"
-    if ext_key not in st.session_state:
-        st.session_state[ext_key] = get_extension_allowance_days(context)
+def get_receipt_payment_amount(extracted: dict[str, Any]) -> str:
+    parsed = parse_amount_value(extracted.get("amount"))
+    if parsed is not None:
+        return f"{parsed:.2f}"
+    return str(extracted.get("amount") or "").strip()
 
-    ext_col, save_col = st.columns([2.2, 0.75], gap="small", vertical_alignment="bottom")
-    with ext_col:
-        st.number_input(
-            t("extension_allowance_label"),
-            min_value=0,
-            max_value=365,
-            step=1,
-            key=ext_key,
-            help=t("extension_allowance_help"),
+
+def get_receipt_payment_date_iso(extracted: dict[str, Any]) -> str | None:
+    parsed = parse_policy_date(str(extracted.get("payment_date") or ""))
+    return parsed.isoformat() if parsed else None
+
+
+def build_payment_confirmation_record(
+    extracted: dict[str, Any],
+    *,
+    due_iso: str,
+    method: str,
+    matches: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    record: dict[str, Any] = {
+        "status": "confirmed",
+        "paid": True,
+        "due_date": due_iso,
+        "confirmed_at": datetime.now().isoformat(),
+        "method": method,
+        "extracted": extracted,
+        "payment_amount": get_receipt_payment_amount(extracted),
+    }
+    payment_date = get_receipt_payment_date_iso(extracted)
+    if payment_date:
+        record["payment_date"] = payment_date
+    if matches is not None:
+        record["matches"] = matches
+    return record
+
+
+def render_payment_match_confirmation(
+    *,
+    key_prefix: str,
+    due_iso: str,
+    verify_key: str,
+    upload_reset_key: str,
+    verify_result: dict[str, Any],
+    on_confirm,
+) -> None:
+    msg_col, ok_col = st.columns([5, 0.7], gap="small", vertical_alignment="center")
+    with msg_col:
+        st.markdown(
+            f'<div class="payment-match-banner">{t("payment_confirmation_match")}</div>',
+            unsafe_allow_html=True,
         )
-    with save_col:
+    with ok_col:
         st.markdown('<div class="save-btn-blue-marker"></div>', unsafe_allow_html=True)
-        if st.button(t("save_btn"), key=f"{key_prefix}save_extension_allowance", width="stretch"):
-            allowance = int(st.session_state.get(ext_key, 0))
-            context["extension_allowance_days"] = max(0, allowance)
-            if analysis_id:
-                persist_analysis_context(int(analysis_id), context)
-                if st.session_state.get("saved_analysis_id") == analysis_id:
-                    st.session_state.analysis_context = context
-            st.success(t("extension_allowance_saved"))
+        if st.button(t("upload_error_ok"), key=f"{key_prefix}pay_match_ok_{due_iso}", width="stretch"):
+            on_confirm(verify_result)
+            st.session_state.pop(verify_key, None)
+            extract_cache_key = f"{key_prefix}pay_extracted_{due_iso}_{st.session_state[upload_reset_key]}"
+            st.session_state.pop(extract_cache_key, None)
+            st.session_state.pop(f"{extract_cache_key}_file", None)
+            st.rerun()
 
 
 def compute_risk_level(
@@ -3624,6 +4262,15 @@ def get_policy_payment_schedule(
     analysis: dict[str, Any],
     context: dict[str, Any],
 ) -> list[date]:
+    freq = normalize_payment_frequency(
+        context.get("payment_frequency") or analysis.get("payment_frequency")
+    )
+    policy_start = parse_policy_date(analysis.get("policy_start_date"))
+    policy_end = parse_policy_date(analysis.get("policy_end_date"))
+
+    if policy_start and freq in PAYMENT_FREQUENCIES:
+        return generate_payment_dates_for_term(policy_start, freq, policy_end)
+
     renewal = analysis.get("renewal_date") or ""
     if not renewal or renewal == "null":
         return []
@@ -3631,11 +4278,6 @@ def get_policy_payment_schedule(
         anchor_due = datetime.strptime(renewal[:10], "%Y-%m-%d").date()
     except ValueError:
         return []
-    freq = normalize_payment_frequency(
-        context.get("payment_frequency") or analysis.get("payment_frequency")
-    )
-    policy_start = parse_policy_date(analysis.get("policy_start_date"))
-    policy_end = parse_policy_date(analysis.get("policy_end_date"))
     return generate_policy_payment_dates(anchor_due, freq, policy_start, policy_end)
 
 
@@ -3772,17 +4414,18 @@ def get_history_payment_status(
     reference: date | None = None,
 ) -> tuple[str, str]:
     ref = reference or get_reference_date()
-    renewal = analysis.get("renewal_date") or ""
-    if not renewal or renewal == "null":
-        return "yellow", t("payment_status_warning")
-    try:
-        due = datetime.strptime(renewal[:10], "%Y-%m-%d").date()
-    except ValueError:
-        return "yellow", t("payment_status_warning")
+    due = get_next_unpaid_payment_date(analysis, context, ref)
+    if not due:
+        renewal = analysis.get("renewal_date") or ""
+        if not renewal or renewal == "null":
+            return "yellow", t("payment_status_warning")
+        try:
+            due = datetime.strptime(renewal[:10], "%Y-%m-%d").date()
+        except ValueError:
+            return "yellow", t("payment_status_warning")
 
     confirmations = context.get("payment_confirmations") or {}
-    confirmed = confirmations.get(due.isoformat())
-    if is_term_paid_record(confirmed):
+    if is_term_paid_record(confirmations.get(due.isoformat())):
         return "green", t("payment_status_paid")
 
     color = payment_due_color(due, ref)
@@ -3794,6 +4437,7 @@ def render_history_status_chip(color: str, text: str) -> None:
         "green": "history-chip-green",
         "yellow": "history-chip-yellow",
         "red": "history-chip-red",
+        "orange": "history-chip-orange",
     }.get(color, "history-chip-green")
     safe_text = xml.sax.saxutils.escape(text)
     st.markdown(
@@ -3938,18 +4582,22 @@ def render_payment_verification(
         render_payment_extracted_summary(verify_result.get("extracted") or {})
 
     if verify_result and verify_result.get("all_match"):
-        _persist_confirmation({
-            "status": "confirmed",
-            "paid": True,
-            "due_date": due_iso,
-            "confirmed_at": datetime.now().isoformat(),
-            "method": "auto",
-            "extracted": verify_result["extracted"],
-            "matches": verify_result["matches"],
-        })
-        st.session_state.pop(verify_key, None)
-        st.success(t("payment_confirmed_auto"))
-        st.rerun()
+        def _confirm_match(result: dict[str, Any]) -> None:
+            _persist_confirmation(build_payment_confirmation_record(
+                result["extracted"],
+                due_iso=due_iso,
+                method="auto",
+                matches=result.get("matches"),
+            ))
+
+        render_payment_match_confirmation(
+            key_prefix=key_prefix,
+            due_iso=due_iso,
+            verify_key=verify_key,
+            upload_reset_key=upload_reset_key,
+            verify_result=verify_result,
+            on_confirm=_confirm_match,
+        )
         return
 
     if verify_result and not verify_result.get("all_match"):
@@ -3997,15 +4645,12 @@ def render_payment_verification(
                 key=f"{key_prefix}pay_confirm_{due_iso}",
                 type="primary",
             ):
-                _persist_confirmation({
-                    "status": "confirmed",
-                    "paid": True,
-                    "due_date": due_iso,
-                    "confirmed_at": datetime.now().isoformat(),
-                    "method": "manual_override",
-                    "extracted": extracted,
-                    "matches": matches,
-                })
+                _persist_confirmation(build_payment_confirmation_record(
+                    extracted,
+                    due_iso=due_iso,
+                    method="manual_override",
+                    matches=matches,
+                ))
                 st.session_state.pop(verify_key, None)
                 st.session_state.pop(override_key, None)
                 st.success(t("payment_confirmed_override"))
@@ -4069,20 +4714,13 @@ def render_payment_subrecords(
     *,
     key_prefix: str = "",
 ) -> None:
-    renewal = analysis.get("renewal_date") or ""
-    if not renewal or renewal == "null":
-        return
-    try:
-        next_due = datetime.strptime(renewal[:10], "%Y-%m-%d").date()
-    except ValueError:
+    payment_dates = get_policy_payment_schedule(analysis, context)
+    if not payment_dates:
         return
 
     freq = normalize_payment_frequency(
         context.get("payment_frequency") or analysis.get("payment_frequency")
     )
-    policy_start = parse_policy_date(analysis.get("policy_start_date"))
-    policy_end = parse_policy_date(analysis.get("policy_end_date"))
-    payment_dates = generate_policy_payment_dates(next_due, freq, policy_start, policy_end)
     reference = get_reference_date()
     premium_total = analysis.get("premium_amount", t("not_found"))
     premium_per_term = compute_premium_per_term(premium_total, freq)
@@ -4096,7 +4734,6 @@ def render_payment_subrecords(
     with st.container():
         st.markdown(f'<div class="payment-schedule-marker"></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="section-heading">{t("payment_schedule_title")}</div>', unsafe_allow_html=True)
-        render_extension_allowance_controls(key_prefix, context, analysis_id)
         st.caption(freq_label(freq))
 
         for index, due_date in enumerate(payment_dates, start=1):
@@ -4115,8 +4752,9 @@ def render_payment_subrecords(
             st.markdown(f'<div class="payment-marker payment-marker-{color}"></div>', unsafe_allow_html=True)
             with st.expander(summary, expanded=False):
                 if term_paid:
-                    confirmed_at_raw = (confirmed.get("confirmed_at") or "")[:10]
-                    confirmed_display = format_policy_date(confirmed_at_raw) if confirmed_at_raw else t("not_found")
+                    receipt_date_raw = confirmed.get("payment_date") or (confirmed.get("confirmed_at") or "")[:10]
+                    confirmed_display = format_policy_date(receipt_date_raw) if receipt_date_raw else t("not_found")
+                    receipt_amount = confirmed.get("payment_amount") or t("not_found")
                     st.markdown(
                         f'<span class="payment-paid-badge">'
                         f'{t("payment_confirmed_badge").format(date=confirmed_display)}'
@@ -4126,6 +4764,8 @@ def render_payment_subrecords(
                     st.markdown(
                         f'<div class="payment-body">'
                         f"<strong>{t('payment_detail_due')}:</strong> {format_display_date(due_date)}<br>"
+                        f"<strong>{t('payment_field_date')}:</strong> {format_policy_date(confirmed.get('payment_date')) or t('not_found')}<br>"
+                        f"<strong>{t('payment_field_amount')}:</strong> {receipt_amount}<br>"
                         f"<strong>{t('premium_per_term_label')}:</strong> {premium_per_term}"
                         f"</div>",
                         unsafe_allow_html=True,
@@ -4157,6 +4797,33 @@ def render_payment_subrecords(
                         st.caption(t("payment_save_first_hint"))
 
 
+def get_unpaid_payment_dates(
+    analysis: dict[str, Any],
+    context: dict[str, Any],
+) -> list[date]:
+    payment_dates = get_policy_payment_schedule(analysis, context)
+    confirmations = context.get("payment_confirmations") or {}
+    if payment_dates:
+        return [d for d in payment_dates if not is_term_paid(confirmations, d.isoformat())]
+    parsed = parse_policy_date(analysis.get("renewal_date"))
+    return [parsed] if parsed else []
+
+
+def get_payment_due_for_reference_date(
+    analysis: dict[str, Any],
+    context: dict[str, Any],
+    reference: date,
+) -> date | None:
+    """Payment whose reminder window is relevant on reference (for plan preview / simulation)."""
+    unpaid = get_unpaid_payment_dates(analysis, context)
+    if not unpaid:
+        return None
+    for due_date in unpaid:
+        if due_date >= reference:
+            return due_date
+    return unpaid[0]
+
+
 def reminders_on_date(
     due_date: date,
     ref_date: date,
@@ -4167,6 +4834,35 @@ def reminders_on_date(
 ) -> list[dict[str, Any]]:
     schedule = build_reminder_schedule(due_date, start_days, base_time, frequent_start_days, daily_frequency)
     return [r for r in schedule if r["date"] == ref_date.isoformat()]
+
+
+def find_reminders_due_on_date(
+    analysis: dict[str, Any],
+    context: dict[str, Any],
+    ref_date: date,
+    email_settings: dict[str, Any],
+    whatsapp_settings: dict[str, Any],
+) -> tuple[date | None, list[dict[str, Any]], list[dict[str, Any]]]:
+    """Find which unpaid payment has reminders scheduled on ref_date."""
+    email_days = int(email_settings.get("reminder_start_days") or 30)
+    email_time = email_settings.get("reminder_base_time") or "09:00"
+    email_frequent_days = int(email_settings.get("frequent_start_days") or 7)
+    email_daily_freq = int(email_settings.get("daily_frequency") or 2)
+    wa_days = int(whatsapp_settings.get("reminder_start_days") or 30)
+    wa_time = whatsapp_settings.get("reminder_base_time") or "09:00"
+    wa_frequent_days = int(whatsapp_settings.get("frequent_start_days") or 7)
+    wa_daily_freq = int(whatsapp_settings.get("daily_frequency") or 2)
+
+    for due in get_unpaid_payment_dates(analysis, context):
+        email_rems = reminders_on_date(
+            due, ref_date, email_days, email_time, email_frequent_days, email_daily_freq
+        )
+        wa_rems = reminders_on_date(
+            due, ref_date, wa_days, wa_time, wa_frequent_days, wa_daily_freq
+        )
+        if email_rems or wa_rems:
+            return due, email_rems, wa_rems
+    return None, [], []
 
 
 def dispatch_reminders_for_record(
@@ -4188,26 +4884,20 @@ def dispatch_reminders_for_record(
         reminder_context["payment_confirmations"] = payment_confirmations
     reminder_context.setdefault("payment_frequency", analysis.get("payment_frequency"))
 
-    rd, due, premium = get_reminder_due_context(analysis, reminder_context, ref_date)
-    if not rd or not due:
+    email_cfg = email_settings
+    wa_cfg = whatsapp_settings
+    due, email_due_rems, wa_due_rems = find_reminders_due_on_date(
+        analysis, reminder_context, ref_date, email_cfg, wa_cfg
+    )
+    if not due or (not email_due_rems and not wa_due_rems):
         return [], False
 
     confirmations = reminder_context.get("payment_confirmations") or {}
     if is_term_paid(confirmations, due.isoformat()):
         return [], False
 
-    email_days = int(email_settings.get("reminder_start_days") or 30)
-    email_time = email_settings.get("reminder_base_time") or "09:00"
-    email_frequent_days = int(email_settings.get("frequent_start_days") or 7)
-    email_daily_freq = int(email_settings.get("daily_frequency") or 2)
-    wa_days = int(whatsapp_settings.get("reminder_start_days") or 30)
-    wa_time = whatsapp_settings.get("reminder_base_time") or "09:00"
-    wa_frequent_days = int(whatsapp_settings.get("frequent_start_days") or 7)
-    wa_daily_freq = int(whatsapp_settings.get("daily_frequency") or 2)
-    email_due_rems = reminders_on_date(due, ref_date, email_days, email_time, email_frequent_days, email_daily_freq)
-    wa_due_rems = reminders_on_date(due, ref_date, wa_days, wa_time, wa_frequent_days, wa_daily_freq)
-    if not email_due_rems and not wa_due_rems:
-        return [], False
+    rd = due.isoformat()
+    premium = get_reminder_premium_amount(analysis, reminder_context)
 
     holder = analysis.get("policy_holder", "")
     emails = [
@@ -4221,24 +4911,36 @@ def dispatch_reminders_for_record(
     sent: list[str] = []
 
     if email_due_rems and emails[0] and is_smtp_configured(config):
-        if send_email_reminder(emails, holder, rd, premium, lang):
-            sent.append(t("email_sent"))
+        try:
+            if send_email_reminder(emails, holder, rd, premium, lang):
+                sent.append(t("email_sent"))
+        except Exception as exc:
+            safe_log_exception("dispatch_reminders_for_record.email", exc)
 
     phone = phones[0]
     if wa_due_rems and phone and is_voice_configured(config):
-        ok, _ = send_voice_reminder(phone, holder, rd, premium, lang)
-        if ok:
-            sent.append(t("voice_sent"))
+        try:
+            ok, _ = send_voice_reminder(phone, holder, rd, premium, lang)
+            if ok:
+                sent.append(t("voice_sent"))
+        except Exception as exc:
+            safe_log_exception("dispatch_reminders_for_record.voice", exc)
 
     if wa_due_rems and phone and is_sms_configured(config):
-        ok, _ = send_sms_reminder(phone, holder, rd, premium, lang)
-        if ok:
-            sent.append(t("sms_sent"))
+        try:
+            ok, _ = send_sms_reminder(phone, holder, rd, premium, lang)
+            if ok:
+                sent.append(t("sms_sent"))
+        except Exception as exc:
+            safe_log_exception("dispatch_reminders_for_record.sms", exc)
 
     if wa_due_rems and phone and is_twilio_configured(config):
-        ok, _ = send_whatsapp_reminder(phone, holder, rd, premium, lang)
-        if ok:
-            sent.append(t("whatsapp_sent"))
+        try:
+            ok, _ = send_whatsapp_reminder(phone, holder, rd, premium, lang)
+            if ok:
+                sent.append(t("whatsapp_sent"))
+        except Exception as exc:
+            safe_log_exception("dispatch_reminders_for_record.whatsapp", exc)
 
     if not sent:
         return [t("sim_no_contact")], True
@@ -4255,7 +4957,15 @@ def run_simulation_for_all_records(sim_date: date, config: dict[str, str]) -> li
 
     for row in history:
         analysis, context = parse_stored_analysis(row)
+        analysis = infer_renewal_date_from_term(dict(analysis), sim_date)
         holder = analysis.get("policy_holder") or t("not_found")
+
+        if int(row.get("is_renewed") or 0):
+            results.append({
+                "summary": t("sim_record_renewed").format(holder=holder),
+                "sent_count": 0,
+            })
+            continue
 
         if not row.get("reminders_active", 1):
             results.append({
@@ -4272,21 +4982,29 @@ def run_simulation_for_all_records(sim_date: date, config: dict[str, str]) -> li
             })
             continue
 
-        email_cfg = get_channel_reminder_config("email", row, context, analysis)
-        wa_cfg = get_channel_reminder_config("whatsapp", row, context, analysis)
-        lang = context.get("analysis_language") or row.get("language") or st.session_state.language
-        confirmations = load_payment_confirmations(row)
+        try:
+            email_cfg = get_channel_reminder_config("email", row, context, analysis)
+            wa_cfg = get_channel_reminder_config("whatsapp", row, context, analysis)
+            lang = context.get("analysis_language") or row.get("language") or st.session_state.language
+            confirmations = load_payment_confirmations(row)
 
-        messages, due = dispatch_reminders_for_record(
-            analysis,
-            sim_date,
-            lang,
-            resolved,
-            email_settings=email_cfg,
-            whatsapp_settings=wa_cfg,
-            payment_confirmations=confirmations,
-            context=context,
-        )
+            messages, due = dispatch_reminders_for_record(
+                analysis,
+                sim_date,
+                lang,
+                resolved,
+                email_settings=email_cfg,
+                whatsapp_settings=wa_cfg,
+                payment_confirmations=confirmations,
+                context=context,
+            )
+        except Exception as exc:
+            safe_log_exception("run_simulation_for_all_records", exc)
+            results.append({
+                "summary": t("sim_record_error").format(holder=holder, error=type(exc).__name__),
+                "sent_count": 0,
+            })
+            continue
 
         if not due:
             results.append({
@@ -4333,6 +5051,16 @@ def normalize_payment_frequency(freq: str | None) -> str:
     return mapping.get(freq, "annual")
 
 
+def resolve_whatsapp_phone(key_prefix: str, context: dict[str, Any]) -> str:
+    phone = (st.session_state.get(f"{key_prefix}whatsapp_phone", "") or "").strip()
+    if phone:
+        return phone
+    phone = (context.get("whatsapp_phone") or "").strip()
+    if phone:
+        return phone
+    return (load_global_contacts().get("whatsapp_primary") or "").strip()
+
+
 def build_reminder_schedule(
     due_date: date,
     start_days: int,
@@ -4366,6 +5094,15 @@ def build_reminder_schedule(
             })
         current += timedelta(days=1)
     return reminders
+
+
+def filter_reminder_schedule_from_date(
+    schedule: list[dict[str, Any]],
+    reference: date | None = None,
+) -> list[dict[str, Any]]:
+    ref_iso = (reference or date.today()).isoformat()
+    upcoming = [r for r in schedule if r["date"] >= ref_iso]
+    return upcoming if upcoming else schedule
 
 
 def generate_ics_schedule(
@@ -4537,8 +5274,7 @@ def send_email_reminder(
                 server.sendmail(config["SMTP_FROM"], recipients, msg.as_string())
         return True
     except Exception as exc:
-        print(f"[send_email_reminder] {type(exc).__name__}: {exc}")
-        traceback.print_exc()
+        safe_log_exception("send_email_reminder", exc)
         return False
 
 
@@ -4587,7 +5323,7 @@ def send_whatsapp_reminder(
         except ImportError:
             detail = f"{type(exc).__name__}: {exc}"
         print(f"[send_whatsapp_reminder] {detail}")
-        traceback.print_exc()
+        safe_log_exception("send_whatsapp_reminder", exc)
         return False, detail
 
 
@@ -4633,7 +5369,7 @@ def send_sms_reminder(
         except ImportError:
             detail = f"{type(exc).__name__}: {exc}"
         print(f"[send_sms_reminder] {detail}")
-        traceback.print_exc()
+        safe_log_exception("send_sms_reminder", exc)
         return False, detail
 
 
@@ -4678,7 +5414,7 @@ def send_voice_reminder(
         except ImportError:
             detail = f"{type(exc).__name__}: {exc}"
         print(f"[send_voice_reminder] {detail}")
-        traceback.print_exc()
+        safe_log_exception("send_voice_reminder", exc)
         return False, detail
 
 
@@ -4957,14 +5693,23 @@ def render_reminder_section(
     frequent_days = int(email_cfg["frequent_start_days"])
     daily_frequency = int(email_cfg["daily_frequency"])
 
-    rd, due, premium = get_reminder_due_context(analysis, context)
+    schedule_analysis = infer_renewal_date_from_term(dict(analysis), get_reference_date())
+    ref = get_reference_date()
+    rd, send_due, premium = get_reminder_due_context(schedule_analysis, context, ref)
+    plan_due = (
+        get_payment_due_for_reference_date(schedule_analysis, context, ref)
+        if ref != date.today()
+        else send_due
+    )
     holder = analysis.get("policy_holder", "")
     lang = st.session_state.language
 
-    if due and reminders_active:
+    if plan_due:
         try:
-            ref = get_reference_date()
-            schedule = build_reminder_schedule(due, int(reminder_days), reminder_time, frequent_days, daily_frequency)
+            schedule = filter_reminder_schedule_from_date(
+                build_reminder_schedule(plan_due, int(reminder_days), reminder_time, frequent_days, daily_frequency),
+                ref,
+            )
             st.markdown(f'<div class="section-heading">{t("reminder_plan_title")}</div>', unsafe_allow_html=True)
             st.caption(t("reminder_plan_desc"))
             plan_col, _plan_spacer = st.columns([1, 1])
@@ -4985,9 +5730,19 @@ def render_reminder_section(
                     st.dataframe(plan_rows, width="stretch", hide_index=True, height=190)
                     st.caption(t("reminder_plan_scroll_hint"))
                     if ref != date.today():
-                        due_on_ref = reminders_on_date(due, ref, int(reminder_days), reminder_time, frequent_days, daily_frequency)
+                        _, due_on_ref_email, due_on_ref_wa = find_reminders_due_on_date(
+                            schedule_analysis,
+                            context,
+                            ref,
+                            email_cfg,
+                            read_channel_form_values(key_prefix, "whatsapp", analysis=analysis, context=context),
+                        )
+                        due_on_ref = due_on_ref_email or due_on_ref_wa
                         if due_on_ref:
-                            st.info(f"{t('sim_due_now')}: {len(due_on_ref)} — {tier_label(due_on_ref[0]['tier'], due_on_ref[0]['count'])}")
+                            st.info(
+                                f"{t('sim_due_now')}: {len(due_on_ref)} — "
+                                f"{tier_label(due_on_ref[0]['tier'], due_on_ref[0]['count'])}"
+                            )
                     if len(schedule) > 60:
                         st.caption(f"+ {len(schedule) - 60} more reminders")
 
@@ -5016,7 +5771,7 @@ def render_reminder_section(
     st.markdown(f'<div class="section-heading">{t("send_now_title")}</div>', unsafe_allow_html=True)
     st.caption(t("send_now_desc"))
 
-    phone = st.session_state.get(f"{key_prefix}whatsapp_phone", "")
+    phone = resolve_whatsapp_phone(key_prefix, context)
 
     send_left, send_right = st.columns(2)
     with send_left:
@@ -5054,13 +5809,7 @@ def render_reminder_section(
                 if rd and rd != "null" and phone.strip():
                     ok, detail = send_sms_reminder(phone, holder, rd, premium, lang)
                     if ok:
-                        status, sid = (detail.split("|", 1) + [""])[:2]
                         st.success(t("sms_sent"))
-                        st.caption(t("sms_sent_detail").format(status=status, sid=sid))
-                        st.caption(t("sms_sent_note"))
-                        st.markdown(
-                            "[Twilio Message Logs](https://console.twilio.com/us1/monitor/logs/messages)"
-                        )
                     else:
                         st.error(t("sms_failed"))
                         st.code(t("sms_failed_detail").format(detail=detail), language="text")
@@ -5088,13 +5837,7 @@ def render_reminder_section(
                 if rd and rd != "null" and phone.strip():
                     ok, detail = send_whatsapp_reminder(phone, holder, rd, premium, lang)
                     if ok:
-                        status, sid = (detail.split("|", 1) + [""])[:2]
                         st.success(t("whatsapp_sent"))
-                        st.caption(t("whatsapp_sent_detail").format(status=status, sid=sid))
-                        st.caption(t("whatsapp_sent_note"))
-                        st.markdown(
-                            "[Twilio Message Logs](https://console.twilio.com/us1/monitor/logs/messages)"
-                        )
                     else:
                         st.error(t("whatsapp_failed"))
                         st.code(t("whatsapp_failed_detail").format(detail=detail), language="text")
@@ -5107,12 +5850,15 @@ def render_reminder_section(
                     st.warning(t("sms_no_phone"))
                 else:
                     st.warning(t("err_no_renewal"))
-        elif not (rd and rd != "null" and phone.strip() and reminders_active):
+        elif not (rd and rd != "null" and phone):
             st.info(t("whatsapp_available_soon"))
 
-        if rd and rd != "null" and phone.strip() and reminders_active:
+        if rd and rd != "null" and phone:
             _, wa_body = build_reminder_message(holder, rd, premium, lang)
-            st.markdown('<div class="whatsapp-demo-link-marker"></div>', unsafe_allow_html=True)
+            st.markdown(
+                '<div class="whatsapp-demo-link-marker send-now-actions-marker"></div>',
+                unsafe_allow_html=True,
+            )
             st.link_button(
                 t("whatsapp_demo_open"),
                 build_whatsapp_deeplink(phone, wa_body),
@@ -5226,24 +5972,7 @@ def store_analysis_session(analysis: dict[str, Any], risk_level: str, risk_msg_k
 
 def process_new_analysis(analysis: dict[str, Any], risk_level: str, risk_msg_key: str) -> bool:
     """Run immediately after parsing. Returns True when saved to the database."""
-    store_analysis_session(analysis, risk_level, risk_msg_key)
-    existing = find_existing_uploads(analysis)
-    context = st.session_state.analysis_context
-    insurance_id = get_insurance_id(analysis)
-
-    if existing:
-        st.session_state.duplicate_pending = True
-        st.session_state.duplicate_existing_count = len(existing)
-        st.session_state.analysis_db_saved = False
-        context["insurance_id"] = insurance_id
-        context["pending_upload_version"] = next_upload_version(analysis)
-        st.session_state.analysis_context = context
-        return False
-
-    st.session_state.duplicate_pending = False
-    st.session_state.pop("duplicate_existing_count", None)
-    persist_analysis_to_db(analysis, context, 1)
-    return True
+    return finalize_new_analysis(analysis, risk_level, risk_msg_key)
 
 
 @st.dialog(" ")
@@ -5276,6 +6005,15 @@ def clear_current_analysis() -> None:
         "duplicate_pending",
         "duplicate_existing_count",
         "show_replace_manual_hint",
+        "pending_analysis",
+        "pending_missing_fields",
+        "pending_source_text",
+        "pending_validation_notes",
+        "renewal_link_pending",
+        "renewal_link_confirm_step",
+        "renewal_link_is_renewal",
+        "renewal_link_selected_id",
+        "renewal_link_confirmed_target_id",
     ):
         st.session_state.pop(key, None)
 
@@ -5296,18 +6034,32 @@ def render_history_section() -> None:
         row_id = int(row["id"])
         analysis, context = parse_stored_analysis(row)
         label = format_history_label_compact(row)
-        renewal_color, renewal_text = get_history_renewal_status(analysis, reference)
-        payment_color, payment_text = get_history_payment_status(analysis, context, reference)
+        is_renewed = bool(int(row.get("is_renewed") or 0))
+        if is_renewed:
+            renewal_color, renewal_text = get_renewed_status_display(row)
+        else:
+            renewal_color, renewal_text = get_history_renewal_status(analysis, reference)
+            payment_color, payment_text = get_history_payment_status(analysis, context, reference)
 
-        col_main, _spacer, col_delete = st.columns([7, 2.8, 0.5])
-        with col_main:
-            st.markdown('<div class="history-policy-item-marker"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="history-policy-item-marker"></div>', unsafe_allow_html=True)
+        col_policy, col_delete = st.columns([11, 0.45], gap="small", vertical_alignment="center")
+        with col_policy:
             st.markdown('<div class="history-row-marker"></div>', unsafe_allow_html=True)
             with st.expander(label, expanded=False):
                 render_analysis_results(
                     analysis, context, show_reminders=True, key_prefix=reminder_key_prefix(row_id, scope="history")
                 )
-            st.markdown('<div class="history-status-section-marker"></div>', unsafe_allow_html=True)
+        with col_delete:
+            st.markdown('<div class="history-delete-marker"></div>', unsafe_allow_html=True)
+            if st.button("", icon=":material/delete:", key=f"delete_{row_id}", help=t("delete_btn_help")):
+                st.session_state.delete_pending_id = row_id
+                confirm_delete_dialog()
+
+        st.markdown('<div class="history-status-section-marker"></div>', unsafe_allow_html=True)
+        if is_renewed:
+            st.markdown(f'<div class="history-table-head">{t("history_col_renewal")}</div>', unsafe_allow_html=True)
+            render_history_status_chip(renewal_color, renewal_text)
+        else:
             status_col1, status_col2 = st.columns(2, gap="medium")
             with status_col1:
                 st.markdown(f'<div class="history-table-head">{t("history_col_renewal")}</div>', unsafe_allow_html=True)
@@ -5315,11 +6067,6 @@ def render_history_section() -> None:
             with status_col2:
                 st.markdown(f'<div class="history-table-head">{t("history_col_payment")}</div>', unsafe_allow_html=True)
                 render_history_status_chip(payment_color, payment_text)
-        with col_delete:
-            st.markdown("<div style='height: 0.15rem'></div>", unsafe_allow_html=True)
-            if st.button("", icon=":material/delete:", key=f"delete_{row_id}", help=t("delete_btn_help")):
-                st.session_state.delete_pending_id = row_id
-                confirm_delete_dialog()
 
 
 def restart_app() -> None:
@@ -5434,14 +6181,24 @@ def main() -> None:
                 key=f"current_pdf_{st.session_state.upload_widget_key}",
                 accept_multiple_files=False,
             )
+            if current_pdf is not None:
+                upload_sig = f"{current_pdf.name}:{getattr(current_pdf, 'size', '')}"
+                if st.session_state.get("upload_clear_sig") != upload_sig:
+                    clear_simulation_output()
+                    st.session_state.upload_clear_sig = upload_sig
+            else:
+                st.session_state.pop("upload_clear_sig", None)
             st.markdown(
                 f'<div class="sim-field-label upload-file-hint">{t("upload_file_hint")}</div>',
                 unsafe_allow_html=True,
             )
 
             if st.button(t("analyze_btn"), type="primary", disabled=not current_pdf):
+                clear_simulation_output()
                 st.session_state.pop("pending_analysis", None)
                 st.session_state.pop("pending_missing_fields", None)
+                st.session_state.pop("pending_source_text", None)
+                st.session_state.pop("pending_validation_notes", None)
                 current_text, err, detail = extract_text(current_pdf)
                 if err:
                     st.session_state.upload_parse_error = {
@@ -5458,19 +6215,22 @@ def main() -> None:
                     }
                     st.rerun()
                 analysis = normalize_policy_holder(analysis or {})
-                missing = get_missing_required_fields(analysis)
-                if missing:
+                st.session_state.pending_source_text = current_text
+                needs_review = get_fields_needing_manual_input(analysis, current_text)
+                if needs_review:
                     st.session_state.pending_analysis = analysis
-                    st.session_state.pending_missing_fields = missing
+                    st.session_state.pending_missing_fields = needs_review
+                    st.session_state.pending_validation_notes = dict(analysis.get("_validation_notes") or {})
                     st.rerun()
                 renewal_date = analysis.get("renewal_date") or ""
                 risk_level, risk_msg_key = compute_risk_level(
                     renewal_date if renewal_date != "null" else None,
                     get_reference_date(),
                 )
-                saved = process_new_analysis(analysis, risk_level, risk_msg_key)
+                saved = begin_analysis_after_upload(analysis, risk_level, risk_msg_key)
                 if saved:
                     st.success(t("analysis_saved"))
+                st.rerun()
 
     render_simulation_results_section()
 
@@ -5483,10 +6243,16 @@ def main() -> None:
     if st.session_state.pop("replace_manual_flash", False):
         st.warning(t("duplicate_delete_manual"))
 
-    if st.session_state.get("duplicate_pending"):
+    if st.session_state.pop("duplicate_discard_flash", False):
+        st.info(t("duplicate_discarded"))
+
+    if st.session_state.get("renewal_link_pending"):
+        render_renewal_link_panel()
+    elif st.session_state.get("duplicate_pending"):
         render_duplicate_alert_panel()
 
-    render_persisted_analysis()
+    if not st.session_state.get("renewal_link_pending"):
+        render_persisted_analysis()
 
     render_history_section()
 
