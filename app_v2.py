@@ -657,6 +657,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "field_next_payment_date": "Next payment due date",
         "upload_manual_continue": "Continue with entered details",
         "upload_try_again": "Upload a different file",
+        "upload_clear_file": "Remove file",
         "field_plan_id": "Plan ID / policy number",
         "field_payment_frequency": "Payment frequency",
         "field_total_amount": "Total plan amount",
@@ -986,6 +987,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "field_next_payment_date": "Próxima fecha de pago",
         "upload_manual_continue": "Continuar con los datos ingresados",
         "upload_try_again": "Subir otro archivo",
+        "upload_clear_file": "Quitar archivo",
         "field_plan_id": "ID de póliza / número de plan",
         "field_payment_frequency": "Frecuencia de pago",
         "field_total_amount": "Monto total del plan",
@@ -1018,7 +1020,34 @@ def tier_label(tier: str, count: int = 1) -> str:
 
 
 def get_reference_date() -> date:
-    return st.session_state.get("reference_date", date.today())
+    real_today = date.today()
+    ref = st.session_state.get("reference_date", real_today)
+    if not isinstance(ref, date):
+        try:
+            ref = date.fromisoformat(str(ref)[:10])
+        except ValueError:
+            ref = real_today
+    if ref < real_today:
+        ref = real_today
+        st.session_state.reference_date = real_today
+    return ref
+
+
+def ensure_simulation_date_widgets_valid() -> date:
+    """Keep reference/picker dates within Streamlit date_input bounds."""
+    real_today = date.today()
+    ref = get_reference_date()
+
+    picker = st.session_state.get("simulation_date_picker", ref)
+    if not isinstance(picker, date):
+        try:
+            picker = date.fromisoformat(str(picker)[:10])
+        except ValueError:
+            picker = ref
+    if picker < real_today:
+        picker = real_today
+    st.session_state.simulation_date_picker = picker
+    return ref
 
 
 def extract_contacts_from_row(row: dict[str, Any], context: dict[str, Any]) -> dict[str, str]:
@@ -1620,13 +1649,13 @@ def render_header_today_and_simulation(config: dict[str, str]) -> None:
 
     render_header_date_display()
 
-    ref = get_reference_date()
+    ref = ensure_simulation_date_widgets_valid()
     st.markdown('<div class="header-sim-row-marker"></div>', unsafe_allow_html=True)
     date_col, btn_col = st.columns([1.2, 1], gap="small")
     with date_col:
         st.date_input(
             t("sim_date_label"),
-            value=st.session_state.get("reference_date", real_today),
+            value=ref,
             min_value=real_today,
             key="simulation_date_picker",
             label_visibility="collapsed",
@@ -1847,8 +1876,22 @@ CUSTOM_CSS = """
         width: 100% !important;
         max-width: 100%;
     }
-    /* Single-file uploaders: Streamlit still renders a "+" (Add files) after selection */
-    [data-testid="stFileUploader"] button[aria-label="Add files"] {
+    div[data-testid="stColumn"]:has(.upload-compact-marker) [data-testid="stFileUploaderFileData"] button,
+    div[data-testid="stColumn"]:has(.upload-compact-marker) [data-testid="stFileUploaderFileData"] button[kind="icon"],
+    div[data-testid="stColumn"]:has(.upload-compact-marker) [data-testid="stFileUploaderFileData"] [data-testid="stBaseButton-icon"] {
+        display: inline-flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        min-width: 1.75rem !important;
+        min-height: 1.75rem !important;
+        background: #FFFFFF !important;
+        color: #1E3A5F !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 6px !important;
+    }
+    /* Single-file uploaders: hide "+" in dropzone only, keep remove on file chip */
+    [data-testid="stFileUploader"] [data-testid="stFileUploaderDropzone"] button[aria-label="Add files"],
+    [data-testid="stFileUploader"] [data-testid="stFileUploaderDropzone"] button[aria-label="Agregar archivos"] {
         display: none !important;
     }
     .sim-field-label {
@@ -3629,8 +3672,13 @@ def merge_manual_analysis_fields(analysis: dict[str, Any], values: dict[str, Any
     return normalize_policy_holder(merged)
 
 
-def reset_upload_state() -> None:
+def clear_upload_widget() -> None:
     st.session_state.upload_widget_key = st.session_state.get("upload_widget_key", 0) + 1
+    st.session_state.pop("upload_clear_sig", None)
+
+
+def reset_upload_state() -> None:
+    clear_upload_widget()
     for key in (
         "upload_parse_error",
         "pending_analysis",
@@ -3739,6 +3787,7 @@ def render_missing_fields_form() -> None:
         saved = begin_analysis_after_upload(merged, risk_level, risk_msg_key)
         if saved:
             st.success(t("analysis_saved"))
+        clear_upload_widget()
         st.rerun()
 
 
@@ -6186,6 +6235,13 @@ def main() -> None:
                 if st.session_state.get("upload_clear_sig") != upload_sig:
                     clear_simulation_output()
                     st.session_state.upload_clear_sig = upload_sig
+                if st.button(
+                    t("upload_clear_file"),
+                    key=f"clear_upload_{st.session_state.upload_widget_key}",
+                    width="content",
+                ):
+                    clear_upload_widget()
+                    st.rerun()
             else:
                 st.session_state.pop("upload_clear_sig", None)
             st.markdown(
@@ -6221,6 +6277,7 @@ def main() -> None:
                     st.session_state.pending_analysis = analysis
                     st.session_state.pending_missing_fields = needs_review
                     st.session_state.pending_validation_notes = dict(analysis.get("_validation_notes") or {})
+                    clear_upload_widget()
                     st.rerun()
                 renewal_date = analysis.get("renewal_date") or ""
                 risk_level, risk_msg_key = compute_risk_level(
@@ -6230,6 +6287,7 @@ def main() -> None:
                 saved = begin_analysis_after_upload(analysis, risk_level, risk_msg_key)
                 if saved:
                     st.success(t("analysis_saved"))
+                clear_upload_widget()
                 st.rerun()
 
     render_simulation_results_section()
